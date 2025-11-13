@@ -1,20 +1,23 @@
 import 'dart:async';
-import 'package:http/http.dart';
-import 'dart:convert';
+
 import 'package:main/api_key.dart';
 import 'package:main/models/account.dart';
+import 'package:http/http.dart';
+import 'dart:convert';
 
 class AccountService {
-  StreamController<String> _streamController = StreamController<String>();
+  final StreamController<String> _streamController = StreamController<String>();
   Stream<String> get streamInfos => _streamController.stream;
-  String url = "https://api.github.br/gists/0544f7f4bd942f47b8af0f91877aec96";
+
+  String url = "https://api.github.com/gists/413c0aefe6c6abc464581c29029c8ace";
 
   Future<List<Account>> getAll() async {
     Response response = await get(Uri.parse(url));
-    _streamController.add("${DateTime.now()} | Requisição de leitura (usando async)");
+    _streamController.add("${DateTime.now()} | Requisição de leitura.");
 
-    Map<String, dynamic> MapResponse = json.decode(response.body);
-    List<dynamic> listDynamic = json.decode(MapResponse["files"]["accounts.json"]["content"]);
+    Map<String, dynamic> mapResponse = json.decode(response.body);
+    List<dynamic> listDynamic =
+        json.decode(mapResponse["files"]["accounts.json"]["content"]);
 
     List<Account> listAccounts = [];
 
@@ -28,44 +31,39 @@ class AccountService {
   }
 
   addAccount(Account account) async {
-  List<Account> listAccounts = await getAll();
-  listAccounts.add(account);
-  
-  List<Map<String, dynamic>> listContent = [];
-  for (Account account in listAccounts) {
-    listContent.add(account.toMap());
+    List<Account> listAccounts = await getAll();
+    listAccounts.add(account);
+    save(listAccounts, accountName: account.name);
   }
-  
-  String content = json.encode(listContent);
 
-  Response response = await post(Uri.parse(url), headers: {
-    "Authorization" : "Bearer $githubApiKey"
-  }, body: json.encode({
-    "description": "account.json",
-    "public": true,
-    "files": {
-      "accounts.json": {
-        "content": content,
-      }
+  save(List<Account> listAccounts, {String accountName = ""}) async {
+    List<Map<String, dynamic>> listContent = [];
+    for (Account account in listAccounts) {
+      listContent.add(account.toMap());
     }
-  }),);
 
-  if (response.statusCode.toString()[0] == "2") {
-    _streamController.add("${DateTime.now()} | Requisição de adição bem sucedida! (${account.name}).");
-  } else {
-    _streamController.add("${DateTime.now()} | Requisição de falhou (${account.name}).");
+    String content = json.encode(listContent);
+
+    Response response = await post(
+      Uri.parse(url),
+      headers: {"Authorization": "Bearer $githubApiKey"},
+      body: json.encode({
+        "description": "account.json",
+        "public": true,
+        "files": {
+          "accounts.json": {
+            "content": content,
+          }
+        }
+      }),
+    );
+
+    if (response.statusCode.toString()[0] == "2") {
+      _streamController.add(
+          "${DateTime.now()} | Requisição adição bem sucedida ($accountName).");
+    } else {
+      _streamController
+          .add("${DateTime.now()} | Requisição falhou ($accountName).");
+    }
   }
 }
-}
-
-  // StreamSubscription streamSubscription = streamController.stream.listen((String info) {
-  //   print(info);
-  // },);
-  // requestData();
-  // requestDataAsync();
-  // sendDataAsync({
-  //   "id": "ID011",
-  //   "name": "Maria",
-  //   "lastName": "Teste",
-  //   "balance": 2222.0
-  // });
